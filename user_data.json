@@ -1,1 +1,20 @@
- 
+{
+    "email": "matthaiosmarkatis@gmail.com",
+    "phone_country_code": "United Kingdom (+44)",
+    "phone_number": "07480699246",
+    "follow_company": true,
+    "city" : "Sheffield, England, United Kingdom",
+    "cover_letter_path" : "cover.pdf",
+    "used_cover" : true,
+    "disability" : {"status" : "yes", "description" : "ADHD "},
+    "hear_about_job": "LinkedIn",
+    "right_to_work": "British Citizen",
+    "living_in_uk": "Yes",
+    "notice_period": "Immediate",
+    "experience_level": "Early Career",
+    "gender": "Male",
+    "ethnicity": "Prefer not to say",
+    "sexual_orientation": "Prefer not to say",
+    "driving_license": "No",
+    "years_of_experience": "0"
+}
