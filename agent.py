@@ -65,6 +65,7 @@ class Agent:
         - End with "Sincerely," followed by the applicant's full name.
         - Aim for 250-400 words to maintain readability and impact.
 
+
         3. Content Strategy:
         - Opening: Start with a strong, attention-grabbing statement that shows enthusiasm for the position.
         - Body:
@@ -107,6 +108,7 @@ class Agent:
           * Ensure proper line breaks between paragraphs
 
         9. Output and Iteration:
+        - You will only have access and use tool's during the critique and improvement phase
         - Always use the markdown_to_pdf tool to generate the final cover letter as "cover.pdf".
         - Provide a brief summary of the cover letter's key points and strategy used.
         - Be prepared to make revisions based on user feedback, always striving for improvement.
@@ -158,7 +160,7 @@ class Agent:
             cleaned_content = re.sub(r'\[.*?\]', '', cleaned_content)
 
             # Remove any remaining empty lines
-            cleaned_content = '\n'.join([line for line in cleaned_content.split('\n') if line.strip()])
+            #cleaned_content = '\n'.join([line for line in cleaned_content.split('\n') if line.strip()])
 
             html_content = markdown.markdown(cleaned_content)
             # Use UTF-8 encoding for pdfkit
@@ -170,88 +172,145 @@ class Agent:
     def autobot(self, initial_input=None):
         if not self.thread:
             self.thread = self.client.beta.threads.create()
-        
+
         self.log_and_print("Cover Letter Generator Agent is running. Type 'exit' to quit.")
-        
+
         if initial_input:
             user_input = initial_input
         else:
             user_input = input("You: ")
 
-        while True:
-            if self.task_finished:
-                self.log_and_print("Task finished. Agent is exiting.")
-                break
+        # Automatic message to double-check the cover letter after the initial input
+        double_check_message = """
+            Please review the initial cover letter draft. Analyze and critique it based on the following criteria:
+            - Is the cover letter appropriate for the job?
+            - Are there any improvements that can be made in terms of language, structure, or content?
+            - Are all facts accurate?
+            - Is the formatting ATS-friendly and visually appealing?
+            - Could any more appropriate skills or achievements be added?
 
-            if user_input.lower() == 'exit':
-                break
+            After analyzing, suggest changes or improvements and finalize the document.
+        """
 
-            try:
-                self.log_and_print(f"User: {user_input}")
+        try:
+            self.log_and_print(f"User: {user_input}")
+            self.client.beta.threads.messages.create(
+                thread_id=self.thread.id,
+                role="user",
+                content=user_input
+            )
 
-                self.client.beta.threads.messages.create(
+            # Run the assistant for the first draft (without tool access)
+            run = self.client.beta.threads.runs.create(
+                thread_id=self.thread.id,
+                assistant_id=self.assistant.id,
+                tools_enabled=False  # No tool access for the initial draft creation
+            )
+
+            # Wait for the assistant to finish the first draft
+            while run.status not in ["completed", "failed"]:
+                run = self.client.beta.threads.runs.retrieve(
                     thread_id=self.thread.id,
-                    role="user",
-                    content=user_input
-                )
-                run = self.client.beta.threads.runs.create(
-                    thread_id=self.thread.id,
-                    assistant_id=self.assistant.id
+                    run_id=run.id
                 )
 
-                while run.status not in ["completed", "failed"]:
-                    run = self.client.beta.threads.runs.retrieve(
-                        thread_id=self.thread.id,
-                        run_id=run.id
-                    )
-                    if run.status == "requires_action":
-                        tool_calls = run.required_action.submit_tool_outputs.tool_calls
-                        tool_outputs = []
-                        for tool_call in tool_calls:
-                            function_name = tool_call.function.name
-                            function_args = json.loads(tool_call.function.arguments)
-                            
-                            if function_name == "file_operations":
-                                output = self.file_operations(**function_args)
-                            elif function_name == "markdown_to_pdf":
-                                output = self.markdown_to_pdf(**function_args)
-                            elif function_name == "finish_task":
-                                self.task_finished = True
-                                output = f"Task finished: {function_args['message']}"
-                            else:
-                                output = f"Unknown function: {function_name}"
-
-                            self.log_and_print(f"Executing {function_name}: {function_args}")
-                            self.log_and_print(f"Output: {output}")
-                            
-                            tool_outputs.append({
-                                "tool_call_id": tool_call.id,
-                                "output": output
-                            })
-
-                        self.client.beta.threads.runs.submit_tool_outputs(
-                            thread_id=self.thread.id,
-                            run_id=run.id,
-                            tool_outputs=tool_outputs
-                        )
-
-                messages = self.client.beta.threads.messages.list(thread_id=self.thread.id)
-                for message in reversed(messages.data):
-                    if message.role == "assistant":
-                        self.log_and_print(f"Assistant: {message.content[0].text.value}")
-                        break
-
-                if not self.task_finished and not initial_input:
-                    user_input = input("You: ")
-                else:
+            # Fetch the first assistant message (cover letter draft)
+            messages = self.client.beta.threads.messages.list(thread_id=self.thread.id)
+            first_draft = ""
+            for message in reversed(messages.data):
+                if message.role == "assistant":
+                    first_draft = message.content[0].text.value
+                    self.log_and_print(f"Assistant (First Draft): {first_draft}")
                     break
 
-            except Exception as e:
-                self.log_and_print(f"An error occurred: {str(e)}")
-                if not initial_input:
-                    user_input = input("You: ")
-                else:
-                    break#def main():
+            # Automatically send the double-check message
+            self.log_and_print(f"Sending automatic double-check request: {double_check_message}")
+            self.client.beta.threads.messages.create(
+                thread_id=self.thread.id,
+                role="user",
+                content=double_check_message
+            )
+
+            # Now, the assistant will critique and suggest improvements (WITH tool access)
+            run = self.client.beta.threads.runs.create(
+                thread_id=self.thread.id,
+                assistant_id=self.assistant.id,
+                tools_enabled=True  # Enable tools during critique and improvement phase
+            )
+
+            tool_outputs = []
+            # Wait for the assistant to critique and suggest changes
+            while run.status not in ["completed", "failed"]:
+                run = self.client.beta.threads.runs.retrieve(
+                    thread_id=self.thread.id,
+                    run_id=run.id
+                )
+
+                # Execute tool calls after critique, as tools are now enabled
+                if run.status == "requires_action":
+                    tool_calls = run.required_action.submit_tool_outputs.tool_calls
+                    for tool_call in tool_calls:
+                        function_name = tool_call.function.name
+                        function_args = json.loads(tool_call.function.arguments)
+
+                        if function_name == "file_operations":
+                            output = self.file_operations(**function_args)
+                        elif function_name == "markdown_to_pdf":
+                            output = self.markdown_to_pdf(**function_args)
+                        elif function_name == "finish_task":
+                            self.task_finished = True
+                            output = f"Task finished: {function_args['message']}"
+                        else:
+                            output = f"Unknown function: {function_name}"
+
+                        self.log_and_print(f"Executing {function_name}: {function_args}")
+                        self.log_and_print(f"Output: {output}")
+
+                        tool_outputs.append({
+                            "tool_call_id": tool_call.id,
+                            "output": output
+                        })
+
+                    # Submit the tool outputs after all tools have been run
+                    self.client.beta.threads.runs.submit_tool_outputs(
+                        thread_id=self.thread.id,
+                        run_id=run.id,
+                        tool_outputs=tool_outputs
+                    )
+
+            # Fetch the critique and suggested changes
+            messages = self.client.beta.threads.messages.list(thread_id=self.thread.id)
+            critique = ""
+            for message in reversed(messages.data):
+                if message.role == "assistant":
+                    critique = message.content[0].text.value
+                    self.log_and_print(f"Assistant (Critique & Finalization): {critique}")
+                    break
+
+            # Exit the loop and function once the task is finished
+            if self.task_finished:
+                self.log_and_print("Task finished. Exiting the autobot function.")
+                return
+
+            if not initial_input:
+                user_input = input("You: ")
+            else:
+                return
+
+        except Exception as e:
+            self.log_and_print(f"An error occurred: {str(e)}")
+            if not initial_input:
+                user_input = input("You: ")
+            else:
+                return
+
+                
+                
+                
+                
+                
+                
+                #def main():
    # agent = Agent(api_key="sk-vMxk-Z_yIcJhqOaK-GE2GoutLsw050TWhJWz1H-sazT3BlbkFJQgZUueDhTOvSX2jWBfBXVOQLpmBppxhG3reY68ZXYA", model="gpt-4o-mini")
     #agent.autobot()
 

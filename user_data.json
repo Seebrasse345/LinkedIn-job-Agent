@@ -5,7 +5,7 @@
     "follow_company": true,
     "city" : "Sheffield, England, United Kingdom",
     "cover_letter_path" : "cover.pdf",
-    "used_cover" : true,
+    "used_cover" : false,
     "disability" : {"status" : "yes", "description" : "ADHD "},
     "hear_about_job": "LinkedIn",
     "right_to_work": "British Citizen",
@@ -16,5 +16,6 @@
     "ethnicity": "Prefer not to say",
     "sexual_orientation": "Prefer not to say",
     "driving_license": "No",
-    "years_of_experience": "0"
+    "years_of_experience": "0",
+    "years of work experience" : "0"
 }
