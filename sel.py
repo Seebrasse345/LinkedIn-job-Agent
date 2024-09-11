@@ -355,31 +355,37 @@ class LinkedInJobApplier:
                 progress_value = int(progress_bar.get_attribute('value'))
                                     # Step 5: Try to proceed again
                 test = self.try_proceed()
+                check  = False
                 if test == True:
                     progressing = False
                 else:
                     current_val = test
 
                     if progress_value == int(current_val):
+                        check = True
                         
                         self.fill_unfilled_fields()
-
-
-
-                test_2 = self.try_proceed()
-                if test_2 == True:
-                    break
-                else:
-                    new_val = test_2
+                        test_2 = self.try_proceed()
+                    else:
+                        check = False
 
 
 
 
-                if int(new_val) == int(current_val):
-                            stuck_attempts += 1
-                            print(f"Stuck attempt {stuck_attempts}/{max_stuck_attempts}")
-                else:
-                            stuck_attempts = 0  # Reset if progress is detected
+                if check == True:
+                    if test_2 == True:
+                        progressing = False
+                    else:
+                        new_val = test_2
+
+
+
+                if check == True:
+                    if int(new_val) == int(current_val):
+                                stuck_attempts += 1
+                                print(f"Stuck attempt {stuck_attempts}/{max_stuck_attempts}")
+                    else:
+                                stuck_attempts = 0  # Reset if progress is detected
                 if stuck_attempts >= max_stuck_attempts:
                         print("Failed to complete application after multiple attempts. Exiting application process.")
                         dismiss_button = self.page.query_selector('button.artdeco-modal__dismiss')
@@ -407,7 +413,6 @@ class LinkedInJobApplier:
         print("UK diversity form detected. Filling out...")
         
         try:
-            self.print_form_elements()
 
             hear_about_input = self.page.query_selector('input[id^="single-line-text-form-component-formElement-urn-li-jobs-applyformcommon-easyApplyFormElement-"][id$="-text"]')
             if hear_about_input:
@@ -525,48 +530,52 @@ class LinkedInJobApplier:
         # Simple string similarity function
         # You might want to use a more sophisticated method like Levenshtein distance
         return sum(a[i] == b[i] for i in range(min(len(a), len(b)))) / max(len(a), len(b))
-    def cover_letter_check(self,job_data_list):
-                # Try to find the upload button
+
+
+
+    def cover_letter_check(self, job_data_list):
         try:
-            upload_button = self.page.wait_for_selector('label[for^="jobs-document-upload-file-input-upload-cover-letter"]', timeout=5000)
-            
-            if upload_button:
-                print("Cover letter upload button found.")
-                
-                # Check if the button is visible
-                if not upload_button.is_visible():
-                    print("Upload button is not visible. Attempting to make it visible...")
-                    self.page.evaluate("""
-                        () => {
-                            const button = document.querySelector('label[for^="jobs-document-upload-file-input-upload-cover-letter"]');
-                            if (button) {
-                                button.style.display = 'block';
-                                button.style.visibility = 'visible';
-                                const parentContainer = button.closest('.js-jobs-document-upload__container');
-                                if (parentContainer) {
-                                    parentContainer.style.display = 'flex';
-                                    parentContainer.style.visibility = 'visible';
-                                }
-                            }
-                        }
-                    """)
-                
-                # Find the associated file input
-                file_input = self.page.wait_for_selector('input[id^="jobs-document-upload-file-input-upload-cover-letter"]',timeout=3000)
-                if self.user_data["used_cover"] == False:
-                    self.create_cover_letter(job_data_list)
+            # Wait for the upload container to appear
+            container = self.page.wait_for_selector('.js-jobs-document-upload__container', timeout=5000)
+
+            if container:
+                print("Container found. Checking for the cover letter upload button.")
+
+                # Look for the hidden file input
+                file_input = self.page.query_selector('input[id^="jobs-document-upload-file-input-upload-cover-letter"]')
                 
                 if file_input:
-                    # Upload the file
-                    file_input.set_input_files("cover.pdf",timeout=3000)
-                    print("Cover letter uploaded successfully!")
+                    print("File input found. Preparing to upload cover letter...")
+
+                    if self.user_data["used_cover"] == False:
+                        self.create_cover_letter(job_data_list)
+                        
+
+                    # Set the full path to your cover letter
+                    cover_letter_path = r"C:\Users\seebr\Desktop\python_stuff\web_stuff\renewed_sel\applicator\cover.pdf"
+
+                    # Ensure the file exists
+                    if os.path.exists(cover_letter_path):
+                        # Use the built-in method to set the file
+                        file_input.set_input_files(cover_letter_path)
+
+                        print("Cover letter uploaded successfully!")
+
+                        # Wait for any potential loading or processing
+                        time.sleep(2)
+
+                    else:
+                        print(f"Cover letter not found at {cover_letter_path}")
                 else:
                     print("File input not found!")
             else:
-                print("Cover letter upload button not found.")
+                print("Container for cover letter not found.")
+        
         except Exception as e:
             print("Error handling cover letter upload:")
             print(e)
+
+        print("Cover letter check completed.")
     def fill_unfilled_fields(self):
         try:
             easy_apply_container = self.wait_for_and_scroll_to_element('div.jobs-easy-apply-content')
