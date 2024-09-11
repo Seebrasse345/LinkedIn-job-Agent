@@ -10,8 +10,8 @@ import PyPDF2
 
 import os
 # Credentials
-LINKEDIN_EMAIL = "matthaiosmarkatis@gmail.com"
-LINKEDIN_PASSWORD = "Bakumonsuno45!"
+LINKEDIN_EMAIL = ""
+LINKEDIN_PASSWORD = ""
 
 STATE_FILE = "linkedin_state.json"  # File to save the browser state
 MAX_LOGIN_ATTEMPTS = 3  # Maximum number of login attempts
@@ -21,7 +21,7 @@ class LinkedInJobApplier:
         self.playwright = sync_playwright().start()
         self.browser = None
         self.context = None
-        self.agent = Agent(api_key="sk-vMxk-Z_yIcJhqOaK-GE2GoutLsw050TWhJWz1H-sazT3BlbkFJQgZUueDhTOvSX2jWBfBXVOQLpmBppxhG3reY68ZXYA", model="gpt-4o-mini")
+        self.agent = Agent(api_key="", model="gpt-4o-mini")
 
         self.page = None
         self.logged_in = False
