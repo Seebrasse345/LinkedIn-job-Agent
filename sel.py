@@ -212,7 +212,19 @@ class LinkedInJobApplier:
         self.agent.autobot(f"Create me a cover letter for the following job description {job_desc} using the cv {cv}")
         
 
+
+
     def apply_to_jobs(self, num_applications=5, location=None, distance=None, user_data_file='user_data.json'):
+            # File to store failed application IDs
+            failed_applications_file = 'failed_applications.json'
+
+            # Load failed application IDs if the file exists
+            if os.path.exists(failed_applications_file):
+                with open(failed_applications_file, 'r') as f:
+                    failed_applications = set(json.load(f))
+            else:
+                failed_applications = set()
+
             if location:
                 self.safe_navigate(f"https://www.linkedin.com/jobs/search/?keywords={self.job_title}&location={location}")
                 if distance:
@@ -226,6 +238,8 @@ class LinkedInJobApplier:
             job_data_list = []
             applications_submitted = 0
             page_number = 1
+            self.page.wait_for_load_state('domcontentloaded')
+            time.sleep(2)
             self.press_easy_apply_button()
             time.sleep(2)
 
@@ -251,6 +265,11 @@ class LinkedInJobApplier:
                             job_title = job_title_elem.inner_text() if job_title_elem else "Unknown Title"
                             
                             job_id = job_card.get_attribute('data-job-id') or "Unknown ID"
+
+                            # Skip if this job ID is in the failed applications set
+                            if job_id in failed_applications:
+                                print(f"Skipping previously failed application for job ID: {job_id}")
+                                continue
                             
                             easy_apply_button = self.page.query_selector('button.jobs-apply-button span.artdeco-button__text')
                             simple_apply_button = self.page.query_selector('button.jobs-apply-button[aria-label^="Apply to"]')
@@ -283,16 +302,22 @@ class LinkedInJobApplier:
                                 
                                 self.page.wait_for_selector('div.jobs-easy-apply-content', timeout=2500)
                                 
-                                self.fill_application_form(user_data, job_data_list)
-                                applications_submitted += 1
+                                application_success = self.fill_application_form(user_data, job_data_list)
+                                if application_success:
+                                    applications_submitted += 1
+                                else:
+                                    # Add failed application ID to the set
+                                    failed_applications.add(job_id)
                             else:
                                 print("Easy Apply button not found or job not suitable")
                             
                         except PlaywrightTimeoutError as e:
                             print(f"Timeout error processing job card {i+1} on page {page_number}: {str(e)}")
+                            failed_applications.add(job_id)
                             continue
                         except Exception as e:
                             print(f"Error processing job card {i+1} on page {page_number}: {str(e)}")
+                            failed_applications.add(job_id)
                             continue
                         
                         self.page.wait_for_timeout(1000)
@@ -315,6 +340,11 @@ class LinkedInJobApplier:
                         break
 
             print("Job application process complete.")
+
+            # Save failed application IDs to file
+            with open(failed_applications_file, 'w') as f:
+                json.dump(list(failed_applications), f)
+
             return job_data_list
 
     def load_all_job_cards(self):
@@ -431,8 +461,7 @@ class LinkedInJobApplier:
         time.sleep(1)
     def fill_application_form(self, user_data, job_data_list):
         stuck_attempts = 0
-        max_stuck_attempts = 3
-        last_progress_value = -1
+        max_stuck_attempts = 2
         progressing = True
 
         while progressing == True:
@@ -442,6 +471,7 @@ class LinkedInJobApplier:
                 if equal_opps_section:
                     print("UK diversity form detected. Filling out...")
                     self.fill_uk_diversity_form(user_data)
+                    stuck_attempts +=1
                     xlas = self.try_proceed()
                     #continue
 
@@ -457,9 +487,15 @@ class LinkedInJobApplier:
                 self.fill_years_of_experience()
                 self.fill_salary(user_data.get('salary', '25000'))
                 self.cover_letter_check(job_data_list)
-                progress_bar = self.page.query_selector('progress.artdeco-completeness-meter-linear__progress-element')
-                progress_value = int(progress_bar.get_attribute('value'))
-                                    # Step 5: Try to proceed again
+                try:
+                    progress_bar = self.page.query_selector('progress.artdeco-completeness-meter-linear__progress-element')
+                    progress_value = int(progress_bar.get_attribute('value'))
+                                        # Step 5: Try to proceed again
+                except:
+                    progress_value = 0
+                    print("maybe starting page or no progress bar")
+                    self.try_proceed()
+                    stuck_attempts += 1
                 test = self.try_proceed()
                 check  = False
                 if test == True:
@@ -493,19 +529,29 @@ class LinkedInJobApplier:
                     else:
                                 stuck_attempts = 0  # Reset if progress is detected
                 if stuck_attempts >= max_stuck_attempts:
-                        print("Failed to complete application after multiple attempts. Exiting application process.")
-                        dismiss_button = self.page.query_selector('button.artdeco-modal__dismiss')
-                        if dismiss_button:
-                            dismiss_button.click()
-                            print("Clicked 'Dismiss' button to close the application modal.")
-                        self.press_discard_button()
-                        progressing = False
+                    print("Failed to complete application after multiple attempts. Exiting application process.")
+                    dismiss_button = self.page.query_selector('button.artdeco-modal__dismiss')
+                    if dismiss_button:
+                        dismiss_button.click()
+                        print("Clicked 'Dismiss' button to close the application modal.")
+                    self.press_discard_button()
+                    return False  # Application failed
 
             except Exception as e:
                 print(f"Error filling application form: {str(e)}")
-                break
+                return False  # Application failed
 
         print("Application process completed.")
+        try:
+            dismiss_button = self.page.query_selector('button.artdeco-modal__dismiss')
+            if dismiss_button:
+                dismiss_button.click()
+                print("Clicked 'Dismiss' button to close the application modal.")
+            self.press_discard_button()
+        except Exception as e:
+            print(f"Error closing application modal")
+
+        return True  # Application succeeded
 
     def select_dropdown(self, label, key, user_data):
         try:
@@ -784,7 +830,7 @@ class LinkedInJobApplier:
                 self.select_radio_option(radio_group, "no", "visa/sponsorship")
             elif "legally authorized" in group_label.lower():
                 self.select_radio_option(radio_group, "yes", "legally authorized")
-            elif any(keyword in group_label.lower() for keyword in ["commute", "relocate", "location", "commuting"]):
+            elif any(keyword in group_label.lower() for keyword in ["commute", "relocate", "location", "commuting","onsite","remote","hybrid"]):
                 self.select_radio_option(radio_group, "yes", "commuting/relocation")
             elif not any(radio.is_checked() for radio in radio_group):
                 selected_radio = random.choice(radio_group)
@@ -1032,7 +1078,7 @@ def main():
             location = "Sheffield"
             distance = "4"
             applier.job_title = job_title  # Store job title as an instance variable
-            applier.apply_to_jobs(location=location, distance=distance, user_data_file='user_data.json', num_applications=50)
+            applier.apply_to_jobs(location=location, distance=distance, user_data_file='user_data.json', num_applications=500)
         else:
             print("Failed to log in. Cannot proceed with job applications.")
     finally:
