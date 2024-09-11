@@ -7,6 +7,7 @@ from pdfminer.high_level import extract_text
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from Agent import Agent
 import PyPDF2
+
 import os
 # Credentials
 LINKEDIN_EMAIL = "matthaiosmarkatis@gmail.com"
@@ -210,121 +211,224 @@ class LinkedInJobApplier:
         job_desc = job_data[-1]["job_title"] + job_data[-1]["job_description"]
         self.agent.autobot(f"Create me a cover letter for the following job description {job_desc} using the cv {cv}")
         
-        
-
 
     def apply_to_jobs(self, num_applications=5, location=None, distance=None, user_data_file='user_data.json'):
-        if location:
-            self.safe_navigate(f"https://www.linkedin.com/jobs/search/?keywords={self.job_title}&location={location}")
-            if distance:
-                self.apply_distance_filter(distance)
-        else:
-            self.safe_navigate(f"https://www.linkedin.com/jobs/search/?keywords={self.job_title}&location=United Kingdom")
+            if location:
+                self.safe_navigate(f"https://www.linkedin.com/jobs/search/?keywords={self.job_title}&location={location}")
+                if distance:
+                    self.apply_distance_filter(distance)
+            else:
+                self.safe_navigate(f"https://www.linkedin.com/jobs/search/?keywords={self.job_title}&location=United Kingdom")
 
-        with open(user_data_file, 'r') as f:
-            user_data = json.load(f)
+            with open(user_data_file, 'r') as f:
+                user_data = json.load(f)
 
-        job_data_list = []
-        applications_submitted = 0
-        page_number = 1
-
-        while applications_submitted < num_applications:
-            self.page.wait_for_selector('div.job-card-container', timeout=15000)
-            self.page.wait_for_load_state('domcontentloaded')
-            time.sleep(5)
+            job_data_list = []
+            applications_submitted = 0
+            page_number = 1
             self.press_easy_apply_button()
-            time.sleep(5)
+            time.sleep(2)
 
+            while applications_submitted < num_applications:
+                try:
+                    self.page.wait_for_selector('div.job-card-container', timeout=15000)
+                    self.page.wait_for_load_state('domcontentloaded')
+                    time.sleep(5)
+
+                    job_cards = self.load_all_job_cards()
+                    
+                    for i, job_card in enumerate(job_cards):
+                        if applications_submitted >= num_applications:
+                            break
+
+                        try:
+                            self.scroll_to_job_card(job_card)
+                            
+                            job_card.click()
+                            self.page.wait_for_selector('.job-details-jobs-unified-top-card__job-title', timeout=5000)
+                            
+                            job_title_elem = self.page.query_selector('.job-details-jobs-unified-top-card__job-title')
+                            job_title = job_title_elem.inner_text() if job_title_elem else "Unknown Title"
+                            
+                            job_id = job_card.get_attribute('data-job-id') or "Unknown ID"
+                            
+                            easy_apply_button = self.page.query_selector('button.jobs-apply-button span.artdeco-button__text')
+                            simple_apply_button = self.page.query_selector('button.jobs-apply-button[aria-label^="Apply to"]')
+                            
+                            if easy_apply_button and 'Easy Apply' in easy_apply_button.inner_text():
+                                easy_apply = True
+                            elif simple_apply_button:
+                                easy_apply = False
+                            else:
+                                easy_apply = False
+                            
+                            job_description_elem = self.page.query_selector('.jobs-description-content__text')
+                            job_description = job_description_elem.inner_text() if job_description_elem else "No description available"
+                            
+                            job_data = {
+                                "job_id": job_id,
+                                "job_title": job_title,
+                                "easy_apply": easy_apply,
+                                "job_description": job_description
+                            }
+                            
+                            job_data_list.append(job_data)
+                            
+                            print(json.dumps(job_data, indent=2))
+
+                            easy_apply_button = self.page.wait_for_selector('button.jobs-apply-button', timeout=1000)
+                            if easy_apply and "intern" not in job_title.lower() and "internship" not in job_title.lower():
+                                easy_apply_button.click()
+                                print("Clicked Easy Apply button")
+                                
+                                self.page.wait_for_selector('div.jobs-easy-apply-content', timeout=2500)
+                                
+                                self.fill_application_form(user_data, job_data_list)
+                                applications_submitted += 1
+                            else:
+                                print("Easy Apply button not found or job not suitable")
+                            
+                        except PlaywrightTimeoutError as e:
+                            print(f"Timeout error processing job card {i+1} on page {page_number}: {str(e)}")
+                            continue
+                        except Exception as e:
+                            print(f"Error processing job card {i+1} on page {page_number}: {str(e)}")
+                            continue
+                        
+                        self.page.wait_for_timeout(1000)
+
+                    if applications_submitted < num_applications:
+                        if self.go_to_next_page():
+                            page_number += 1
+                            print(f"Moving to page {page_number}")
+                        else:
+                            print("No more pages available")
+                            break
+
+                except Exception as e:
+                    print(f"Error on page {page_number}: {str(e)}")
+                    if self.go_to_next_page():
+                        page_number += 1
+                        print(f"Moving to page {page_number}")
+                    else:
+                        print("No more pages available")
+                        break
+
+            print("Job application process complete.")
+            return job_data_list
+
+    def load_all_job_cards(self):
+        last_job_count = 0
+        attempts = 0
+        max_attempts = 1  # Adjust this value if needed
+
+        scroll_positions =[0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1]
+
+        while attempts < max_attempts:
+            for position in scroll_positions:
+                # Scroll to different parts of the job list
+                self.page.evaluate(f'''
+                    () => {{
+                        const jobList = document.querySelector(".jobs-search-results-list");
+                        if (jobList) {{
+                            const scrollHeight = jobList.scrollHeight;
+                            jobList.scrollTo(0, scrollHeight * {position});
+                        }} else {{
+                            const scrollHeight = document.body.scrollHeight;
+                            window.scrollTo(0, scrollHeight * {position});
+                        }}
+                    }}
+                ''')
+                time.sleep(2)  # Wait for new cards to load
+
+            # Get all job cards
             job_cards = self.page.query_selector_all('div.job-card-container')
             
-            for i, job_card in enumerate(job_cards):
-                if applications_submitted >= num_applications:
-                    break
+            print(f"Loaded {len(job_cards)} job cards")
 
-                try:
-                    self.scroll_to_load_jobs(i)
-                    
-                    job_card.click()
-                    self.page.wait_for_selector('.job-details-jobs-unified-top-card__job-title', timeout=5000)
-                    
-                    job_title_elem = self.page.query_selector('.job-details-jobs-unified-top-card__job-title')
-                    job_title = job_title_elem.inner_text() if job_title_elem else "Unknown Title"
-                    
-                    job_id = job_card.get_attribute('data-job-id') or "Unknown ID"
-                    
-                    easy_apply_button = self.page.query_selector('button.jobs-apply-button span.artdeco-button__text')
-                    simple_apply_button = self.page.query_selector('button.jobs-apply-button[aria-label^="Apply to"]')
-                    
-                    if easy_apply_button and 'Easy Apply' in easy_apply_button.inner_text():
-                        easy_apply = True
-                    elif simple_apply_button:
-                        easy_apply = False
-                    else:
-                        easy_apply = False
-                    
-                    job_description_elem = self.page.query_selector('.jobs-description-content__text')
-                    job_description = job_description_elem.inner_text() if job_description_elem else "No description available"
-                    
-                    job_data = {
-                        "job_id": job_id,
-                        "job_title": job_title,
-                        "easy_apply": easy_apply,
-                        "job_description": job_description
-                    }
-                    
-                    job_data_list.append(job_data)
-                    
-                    print(json.dumps(job_data, indent=2))
+            if len(job_cards) >= 25 or len(job_cards) == last_job_count:
+                break
+            
+            last_job_count = len(job_cards)
+            attempts += 1
 
-                    easy_apply_button = self.page.wait_for_selector('button.jobs-apply-button', timeout=1000)
-                    if not easy_apply and "intern" not in job_title.lower() and "internship" not in job_title.lower():
-                        easy_apply_button.click()
-                        print("Clicked Easy Apply button")
-                        
-                        self.page.wait_for_selector('div.jobs-easy-apply-content', timeout=2500)
-                        
-                        self.fill_application_form(user_data, job_data_list)
-                        applications_submitted += 1
-                    else:
-                        print("Easy Apply button not found or job not suitable")
-                    
-                except Exception as e:
-                    print(f"Error analyzing job {i+1} on page {page_number}: {str(e)}")
-                    continue
-                
-                self.page.wait_for_timeout(1000)
+        # Final scroll to ensure all cards are loaded
+        self.page.evaluate('''
+            () => {
+                const jobList = document.querySelector(".jobs-search-results-list");
+                if (jobList) {
+                    jobList.scrollTo(0, jobList.scrollHeight);
+                } else {
+                    window.scrollTo(0, document.body.scrollHeight);
+                }
+            }
+        ''')
+        time.sleep(2)
 
-            if applications_submitted < num_applications:
-                if self.go_to_next_page():
-                    page_number += 1
-                    print(f"Moving to page {page_number}")
-                else:
-                    print("No more pages available")
-                    break
-
-        print("Job application process complete.")
-        return job_data_list
+        # Get the final list of job cards
+        job_cards = self.page.query_selector_all('div.job-card-container')
+        print(f"Final job card count: {len(job_cards)}")
+        
+        return job_cards
 
     def go_to_next_page(self):
         try:
-            next_button = self.page.wait_for_selector('button.artdeco-pagination__button--next:not(:disabled)', timeout=5000)
+            # Scroll to the bottom of the page
+            self.page.evaluate('window.scrollTo(0, document.body.scrollHeight)')
+            time.sleep(2)  # Wait for any lazy-loaded content
+
+            # Wait for the "Next" button to be visible
+            next_button = self.page.wait_for_selector('button.artdeco-button--tertiary.jobs-search-pagination__button--next:not([disabled])', timeout=5000)
+            
             if next_button:
+                # Check if the button is visible in the viewport
+                is_visible = self.page.evaluate('''
+                    (element) => {
+                        const rect = element.getBoundingClientRect();
+                        return (
+                            rect.top >= 0 &&
+                            rect.left >= 0 &&
+                            rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
+                            rect.right <= (window.innerWidth || document.documentElement.clientWidth)
+                        );
+                    }
+                ''', next_button)
+
+                if not is_visible:
+                    # If not visible, scroll the button into view
+                    self.page.evaluate('(element) => element.scrollIntoView({behavior: "smooth", block: "center"})', next_button)
+                    time.sleep(1)  # Wait for scroll to complete
+
+                # Click the button
                 next_button.click()
-                print("Clicked next page button")
-                self.page.wait_for_load_state('domcontentloaded')
-                time.sleep(3)  # Wait for the new page to load
+                time.sleep(3)  # Wait for the next page to load
                 return True
             else:
                 print("Next page button not found or disabled")
                 return False
-        except Exception as e:
-            print(f"Error navigating to next page: {str(e)}")
+        except PlaywrightTimeoutError:
+            print("Next page button not found or disabled")
             return False
-
+        except Exception as e:
+            print(f"Error while trying to go to the next page: {str(e)}")
+            return False
     def scroll_to_load_jobs(self, index):
         self.page.evaluate(f"document.querySelectorAll('div.job-card-container')[{index}].scrollIntoView()")
         self.page.wait_for_timeout(1000)  # Wait for any dynamic content to load
-
+    def scroll_to_job_card(self, job_card):
+        self.page.evaluate('''
+            (element) => {
+                const container = document.querySelector('.jobs-search-results-list');
+                if (container) {
+                    const containerRect = container.getBoundingClientRect();
+                    const elementRect = element.getBoundingClientRect();
+                    container.scrollTop = elementRect.top - containerRect.top - (containerRect.height / 2);
+                } else {
+                    element.scrollIntoView({behavior: "smooth", block: "center"});
+                }
+            }
+        ''', job_card)
+        time.sleep(1)
     def fill_application_form(self, user_data, job_data_list):
         stuck_attempts = 0
         max_stuck_attempts = 3
