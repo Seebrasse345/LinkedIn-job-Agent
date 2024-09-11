@@ -361,6 +361,7 @@ class LinkedInJobApplier:
                     current_val = test
 
                     if progress_value == int(current_val):
+                        
                         self.fill_unfilled_fields()
 
 
@@ -484,10 +485,50 @@ class LinkedInJobApplier:
             import traceback
             traceback.print_exc()
             return False
+    def select_dropdown(self, label, key, user_data):
+        try:
+            # Find the dropdown element
+            dropdown = self.page.query_selector(f'select:near(:text("{label}"))')
+            if not dropdown:
+                print(f"Dropdown for '{label}' not found")
+                return
+
+            # Get the value from user_data
+            value = user_data.get(key, '')
+            if not value:
+                print(f"No value provided for '{label}', skipping...")
+                return
+
+            # Get all options
+            options = dropdown.query_selector_all('option')
+            
+            # Find the closest match
+            best_match = None
+            best_ratio = 0
+            for option in options:
+                option_text = option.inner_text().strip().lower()
+                ratio = self.string_similarity(value.lower(), option_text)
+                if ratio > best_ratio:
+                    best_ratio = ratio
+                    best_match = option
+
+            if best_match:
+                best_match.click()
+                print(f"Selected '{best_match.inner_text().strip()}' for '{label}'")
+            else:
+                print(f"No suitable option found for '{label}'")
+
+        except Exception as e:
+            print(f"Error selecting dropdown for '{label}': {str(e)}")
+
+    def string_similarity(self, a, b):
+        # Simple string similarity function
+        # You might want to use a more sophisticated method like Levenshtein distance
+        return sum(a[i] == b[i] for i in range(min(len(a), len(b)))) / max(len(a), len(b))
     def cover_letter_check(self,job_data_list):
                 # Try to find the upload button
         try:
-            upload_button = self.page.wait_for_selector('label[for^="jobs-document-upload-file-input-upload-cover-letter"]', timeout=3000)
+            upload_button = self.page.wait_for_selector('label[for^="jobs-document-upload-file-input-upload-cover-letter"]', timeout=5000)
             
             if upload_button:
                 print("Cover letter upload button found.")
@@ -511,13 +552,13 @@ class LinkedInJobApplier:
                     """)
                 
                 # Find the associated file input
-                file_input = self.page.query_selector('input[id^="jobs-document-upload-file-input-upload-cover-letter"]')
+                file_input = self.page.wait_for_selector('input[id^="jobs-document-upload-file-input-upload-cover-letter"]',timeout=3000)
                 if self.user_data["used_cover"] == False:
                     self.create_cover_letter(job_data_list)
                 
                 if file_input:
                     # Upload the file
-                    file_input.set_input_files("cover.pdf")
+                    file_input.set_input_files("cover.pdf",timeout=3000)
                     print("Cover letter uploaded successfully!")
                 else:
                     print("File input not found!")
@@ -525,6 +566,7 @@ class LinkedInJobApplier:
                 print("Cover letter upload button not found.")
         except Exception as e:
             print("Error handling cover letter upload:")
+            print(e)
     def fill_unfilled_fields(self):
         try:
             easy_apply_container = self.wait_for_and_scroll_to_element('div.jobs-easy-apply-content')
@@ -589,6 +631,14 @@ class LinkedInJobApplier:
                                 print("Selected 'Yes' for legally authorized question")
                             else:
                                 print("Could not find 'Yes' option for legally authorized question")
+                        if "commute" or "relocate" or "location" or "commuting" in group_label.lower():
+                            # Find and select the "Yes" option
+                            yes_option = next((radio for radio in radio_group if self.get_label_text(radio).strip().lower() == 'yes'), None)
+                            if yes_option:
+                                self.click_element_safely(yes_option)
+                                print("Selected 'Yes' for commuting/relocation question")
+                            else:
+                                print("Could not find 'Yes' option for commuting/relocation question")
                         elif not any(radio.is_checked() for radio in radio_group):
                             selected_radio = random.choice(radio_group)
                             self.click_element_safely(selected_radio)

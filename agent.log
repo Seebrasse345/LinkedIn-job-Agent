@@ -2546,3 +2546,181 @@ Assistant Work Experience, Royal Hallamshire Hospital NHS February 2019
 2024-09-10 19:27:20,053 - Agent - INFO - [2024-09-10 19:27:20] Assistant: The cover letter for the Data Scientist position at Bottomline has been successfully crafted and saved as **cover.pdf**. This letter effectively highlights Matthaios Markatis's qualifications and experiences, aligning them with the job requirements, while showcasing enthusiasm for the role. 
 
 If you need any revisions or further assistance, feel free to ask!
+2024-09-10 20:36:56,186 - Agent - INFO - [2024-09-10 20:36:56] Cover Letter Generator Agent is running. Type 'exit' to quit.
+2024-09-10 20:36:56,186 - Agent - INFO - [2024-09-10 20:36:56] User: Create me a cover letter for the following job description Data Engineer About the job
+
+About Us
+
+We’re an award-winning innovative tech consultancy - a team of creative problem solvers. Since 1993 we’ve been finding better, more sustainable ways to solve complex technology problems for some of the world’s leading organisations and delivered solutions that millions of people use every day.
+
+In the last 30 years we won several awards, including a prestigious Queen’s Award for Enterprise in the Innovation category for our Enterprise Agile delivery approach.
+
+Operating from 26 locations across the world, we bring together teams of creative experts with diverse backgrounds and experiences, who enjoy working and learning in our collaborative and open culture and are committed to world-class delivery.
+
+
+
+
+We want to continue to grow our team with people just like you!
+
+
+
+
+We are DataOps advocates and use software engineering best practices to build scalable and re-usable data solutions to help clients use their data to gain insights, drive decisions and deliver business value. Clients don’t engage BJSS to do the straightforward things, they ask us to help on their biggest challenges which means we get to work with a wide range of tools and technologies and there are always new things to learn.
+
+
+
+
+About the Role
+
+BJSS data engineers are specialist software engineers that build, optimise and maintain data applications, systems and services. This role combines the discipline of software engineering with the knowledge and experience of building data solutions in order to deliver business value.
+
+As a BJSS data engineer you’ll help our clients deploy data pipelines and processes in a production-safe manner, using the latest technologies and with a DataOps culture.
+
+You’ll work in a fast moving, agile environment, within multi-disciplinary teams of highly skilled consultants, delivering modern data platforms into large organisations.
+
+
+
+
+You can expect to get involved in variety of projects in the cloud (AWS, Azure, GCP), learning about and using data services such as Databricks, Data Factory, Synapse, Kafka, Redshift, Glue, Athena, BigQuery, S3, Cloud Data Fusion etc.
+
+
+
+
+About You
+
+You're an engineer at heart and enjoy the challenge of building reliable, efficient data applications systems, services and platforms.
+You have a good understanding of coding best practices and design patterns and experience with code and data versioning, dependency management, code quality and optimisation, error handling, logging, monitoring, validation and alerting.
+You have experience in writing well tested object-oriented Python.
+You have experience with using CI/CD tooling to analyse, build, test and deploy your code.
+You have a good understanding of design choices for data storage and data processing, with a particular focus on cloud data services.
+You have experience in using parallel computing to process large datasets and to optimise computationally intensive tasks.
+You have experience in programmatically deploying, scheduling and monitoring components in a workflow.
+You have experience in writing complex queries against relational and non-relational data stores.
+
+
+
+
+Some of the Perks
+
+Flexible benefits allowance – you choose how to spend your allowance (additional pension contributions, healthcare, dental and more)
+Industry leading health and wellbeing plan - we partner with several wellbeing support functions to cater to each individual's need, including 24/7 GP services, mental health support, and other
+Life Assurance (4 x annual salary)
+25 days annual leave plus bank holidays
+Hybrid working - Our roles are not fully remote as we take pride in the tight knit communities we have created at our local offices. But we offer plenty of flexibility and you can split your time between the office, client site and WFH
+Discounts – we have preferred rates from dozens of retail, lifestyle, and utility brands
+An industry-leading referral scheme with no limits on the number of referrals
+Flexible holiday buy/sell option
+Electric vehicle scheme
+Training opportunities and incentives – we support professional certifications across engineering and non-engineering roles, including unlimited access to O’Reilly
+Giving back – the ability to get involved nationally and regionally with partnerships to get people from diverse backgrounds into tech
+You will become part of a squad with people from different areas within the business who will help you grow at BJSS
+We have a busy social calendar that you can chose to join– quarterly town halls/squad nights out/weekends away with families included/office get togethers
+GymFlex gym membership programme using the cv Matthaios Markatis
+matthaiosmarkatis@gmail.com |/ne07480699246
+Personal Statement
+Recent BSc Physics graduate from the University of Sheffield with a strong foundation in theoretical physics ,ad-
+vanced programming , and data analysis . Demonstrated expertise in applying computational methods and
+machine learning techniques to complex problems in physics and beyond. Proficient in Python ,MATLAB ,
+Excel , and various data analysis tools. Recently completed the IBM Data Science Professional Certificate
+and the IBM AI Engineering Professional Certificate enhancing skills in data science methodologies ,
+machine learning , and big data technologies . Seeking to leverage diverse skill set in software development ,
+data science , orsimulation roles to drive innovation and solve challenging real-world problems.
+Education
+University of Sheffield September 2020 – July 2024
+BSc Physics 2:1 Classification
+Key Modules
+Module Grade
+Advanced Programming in Python 82%
+Programming in Python 78%
+Physics with LabView 67%
+Physical Computing 70%
+Particle Physics 67%
+Solid State Physics 66%
+Classical and Quantum Physics 64%
+Physics of Materials 75%
+Problem-Solving in Physics 59.1%
+Nuclear Physics 66%
+Atomic and Laser Physics 69%
+Eckington Sixth Form September 2018 – June 2020
+A-Levels: Physics (A), Chemistry (B), Biology (A)
+Professional Certifications
+IBM AI Engineering Professional Certificate Coursera — August 2024
+Verification
+•Completed comprehensive 6-course program covering Machine Learning ,Deep Learning , and AI Engi-
+neering
+•Developed proficiency in TensorFlow ,Keras ,PyTorch , and scikit-learn for implementing ML and DL
+models
+•Gained hands-on experience with Computer Vision ,Image Processing , and Neural Networks
+•Applied various ML algorithms including Classification ,Regression ,Clustering , and Dimensional Re-
+duction
+•Completed AI capstone project demonstrating end-to-end deep learning skills
+IBM Data Science Professional Certificate Coursera — July 2024
+Verification
+•Completed comprehensive 12-course program covering data science methodology , tools, and techniques
+•Developed proficiency in Python ,SQL ,R,data analysis ,machine learning , and data visualization
+•Gained hands-on experience with Jupyter Notebooks ,GitHub ,IBM Watson Studio ,IBM Cloud Pakfor Data
+•Applied machine learning algorithms including regression ,classification ,clustering , and recommender
+systems and explored Generative AI to enchance data science workflow.
+•Completed capstone project demonstrating end-to-end data science skills
+Key Skills
+Programming: Advanced proficiency in Python . Experience with TensorFlow ,Keras , and PyTorch for
+deep learning. Intermediate skills in MATLAB ,C++ , and Cfor hardware control. Experience with VHDL
+for hardware description, Rfor statistical computing.
+Machine Learning & Deep Learning: Experienced with scikit-learn ,TensorFlow ,Keras ,PyTorch for
+implementing various ML and DL models including LSTM ,DQN ,Random Forest ,Convolutional Neural
+Networks (CNNs) , and various regression models. Proficient in data preprocessing ,feature engineering ,
+andmodel deployment .
+Computer Vision & Image Processing: Understanding and implementation of image processing tech-
+niques using OpenCV . Experience with image classification ,object detection , and image segmentation
+using deep learning models. Familiar with transfer learning techniques for computer vision tasks.
+Data Science: Proficient in NumPy ,SciPy ,Pandas for data manipulation, data sourcing ,exploratory
+data analysis , and data visualization using Matplotlib ,Seaborn ,Plotly , and Dash .
+Databases: Proficient in SQL for data manipulation and querying. Experience with MongoDB for NoSQL
+databases. Familiarity with Apache Spark for big data processing, Hadoop ecosystem, and big data concepts
+through IBM certifications.
+IoT & Hardware: Experience with Arduino , sensor integration, and The Things Network (TTN) . Proficient
+withLabview for hardware control and reading.
+Version Control & Collaboration: Proficient with GitandGitHub for collaborative development.
+Development Environments: Experienced with Jupyter Notebooks ,Google Colab ,RStudio ,VS Code .
+Key Projects
+Falcon 9 Launch Outcome Modelling Project IBM Data Science Professional Certificate
+•Applied CRISP-DM methodology to use models successfully predicting Falcon 9 launch outcomes based on
+initial variables.
+•Implemented data collection via API and Scraping, data wrangling via Pandas and SQL, exploratory
+data analysis via Dash and Plotly, and statistical analysis
+•Developed models using scikit-learn , including support vector machines ,decision trees , and k-nearest
+neighbors
+•Created interactive dashboards using Plotly andDash
+•Presented comprehensive report with data-driven insights using data storytelling techniques
+Wildfire Detection System 2023 – 2024
+•Developed IoT-based early detection system for wildfires using environmental sensors and machine learning
+•Integrated temperature, humidity, and CO2 sensors with LoRaWAN modules for long-range data transmission
+•Implemented data processing via The Things Network (TTN)
+•Applied Random Forest andDecision Tree algorithms to analyze historical wildfire data acquired via NASA
+FIRMS and MODIS satellites, achieving 85% accuracy in predicting wildfire probabilityTraffic Sign Classification using Deep Learning IBM AI Engineering Capstone Project
+•Developed and implemented a deep learning model for classifying traffic light stop signs using web-scraped
+data
+•Utilized pre-trained models ResNet50 andVGG16 for transfer learning, comparing their performance on the
+classification task
+•Implemented the image classification pipeline using both PyTorch andKeras frameworks
+•Deployed the model on the IBM Watson , analysing performance metrics for optimisation and allowing for
+real-time traffic sign recognition
+•Achieved high accuracy in identifying stop signs, contributing to potential applications in autonomous driving
+systems
+Work Experience
+Team Leader/Supervisor, Meltdown-Wetherspoons February 2022 – November 2023
+•Managed bar operations and staff in 2 high-volume city venues
+•Improved workflow efficiency and led the team through peak service periods
+•Conducted training for new staff, specializing in cocktail service
+•Developed crisis management and leadership skills in high-pressure environments
+Bartender/Front of House, Various Establishments September 2018 – October 2021
+•Ensured exceptional customer service in multiple high-end dining environments
+•Mastered extensive wine and spirits knowledge, enhancing dining experiences
+•Coordinated seamless communication between kitchen and front-of-house staff
+•Recognized for attention to detail, leading to training for managerial positions
+Assistant Work Experience, Royal Hallamshire Hospital NHS February 2019
+•Managed confidential information and supported patient care coordination
+•Implemented efficient organizational systems for medical staff
+•Gained experience in adapting to sensitive, diverse work environments
+123 Ash Crescent, Eckington S21 4AD |/♀nednLinkedIn |IBM Data Science Certificate Verification
+2024-09-10 20:36:56,480 - Agent - INFO - [2024-09-10 20:36:56] An error occurred: Runs.create() got an unexpected keyword argument 'tools_enabled'
