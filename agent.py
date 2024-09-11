@@ -337,5 +337,3 @@ class Agent:
    # agent.create_cover_letter()
     
 
-#if __name__ == "__main__":
-    #main()
