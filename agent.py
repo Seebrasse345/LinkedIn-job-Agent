@@ -252,8 +252,4 @@ class Agent:
                     user_input = input("You: ")
                 else:
                     break#def main():
-   # agent = Agent(api_key="sk-vMxk-Z_yIcJhqOaK-GE2GoutLsw050TWhJWz1H-sazT3BlbkFJQgZUueDhTOvSX2jWBfBXVOQLpmBppxhG3reY68ZXYA", model="gpt-4o-mini")
-    #agent.autobot()
 
-#if __name__ == "__main__":
-    #main()
