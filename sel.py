@@ -5,7 +5,7 @@ import random
 from playwright.sync_api import sync_playwright
 from pdfminer.high_level import extract_text
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
-from Agent import Agent
+import agent
 import PyPDF2
 
 import os
@@ -21,7 +21,7 @@ class LinkedInJobApplier:
         self.playwright = sync_playwright().start()
         self.browser = None
         self.context = None
-        self.agent = Agent(api_key="", model="gpt-4o-mini")
+        self.agent = agent(api_key="", model="gpt-4o-mini")
 
         self.page = None
         self.logged_in = False
