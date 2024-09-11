@@ -79,7 +79,7 @@ class LinkedInJobApplier:
 
     def check_login_status(self):
         self.safe_navigate("https://www.linkedin.com/feed/")
-        time.sleep(1.5)
+        time.sleep(1)
         nav_bar = self.page.query_selector('div[data-test-id="nav-bar"]')
         profile_button = self.page.query_selector('div[data-control-name="nav.settings"]')
         feed_content = self.page.query_selector('div.feed-shared-update-v2')
@@ -149,11 +149,11 @@ class LinkedInJobApplier:
         self.safe_navigate("https://www.linkedin.com/jobs/")
         self.page.fill('input[aria-label="Search by title, skill, or company"]', job_title)
         self.page.press('input[aria-label="Search by title, skill, or company"]', "Enter")
-        time.sleep(2.5)
+        time.sleep(1.5)
 
     def apply_distance_filter(self, distance):
         try:
-            distance_button = self.page.wait_for_selector("button[aria-label^='Distance filter.'][id^='ember']",timeout=5000)
+            distance_button = self.page.wait_for_selector("button[aria-label^='Distance filter.'][id^='ember']",timeout=2500)
             if distance_button:
                 distance_button.click()
                 print("Clicked distance filter dropdown")
@@ -276,8 +276,8 @@ class LinkedInJobApplier:
                     
                     print(json.dumps(job_data, indent=2))
 
-                    easy_apply_button = self.page.wait_for_selector('button.jobs-apply-button', timeout=5000)
-                    if easy_apply and "intern" not in job_title.lower() and "internship" not in job_title.lower():
+                    easy_apply_button = self.page.wait_for_selector('button.jobs-apply-button', timeout=1000)
+                    if not easy_apply and "intern" not in job_title.lower() and "internship" not in job_title.lower():
                         easy_apply_button.click()
                         print("Clicked Easy Apply button")
                         
@@ -290,6 +290,7 @@ class LinkedInJobApplier:
                     
                 except Exception as e:
                     print(f"Error analyzing job {i+1} on page {page_number}: {str(e)}")
+                    continue
                 
                 self.page.wait_for_timeout(1000)
 
@@ -337,7 +338,8 @@ class LinkedInJobApplier:
                 if equal_opps_section:
                     print("UK diversity form detected. Filling out...")
                     self.fill_uk_diversity_form(user_data)
-                    continue
+                    xlas = self.try_proceed()
+                    #continue
 
                 # Step 2: Fill known fields
                 self.fill_field('select[id^="text-entity-list-form-component-formElement-"][id$="-multipleChoice"]', 
@@ -401,6 +403,46 @@ class LinkedInJobApplier:
 
         print("Application process completed.")
 
+    def select_dropdown(self, label, key, user_data):
+        try:
+            # Find the dropdown element using the label text
+            dropdown = self.page.query_selector(f'select[aria-describedby*="multipleChoice-error"]:near(:text("{label}"))')
+            
+            if not dropdown:
+                print(f"Dropdown for '{label}' not found")
+                return
+
+            # Get the value from user_data
+            value = user_data.get(key, '')
+            if not value:
+                print(f"No value provided for '{label}', skipping...")
+                return
+
+            # Use JavaScript to set the value and trigger change event
+            success = self.page.evaluate("""
+                (args) => {
+                    const dropdown = args[0];
+                    const value = args[1];
+                    const options = dropdown.options;
+                    for (let i = 0; i < options.length; i++) {
+                        if (options[i].text.toLowerCase().includes(value.toLowerCase())) {
+                            dropdown.value = options[i].value;
+                            dropdown.dispatchEvent(new Event('change', { bubbles: true }));
+                            return true;
+                        }
+                    }
+                    return false;
+                }
+            """, [dropdown, value])
+
+            if success:
+                print(f"Selected option for '{label}'")
+            else:
+                print(f"Failed to select option for '{label}'")
+
+        except Exception as e:
+            print(f"Error selecting dropdown for '{label}': {str(e)}")
+
     def fill_uk_diversity_form(self, user_data):
         print("Checking for UK diversity form...")
         
@@ -413,7 +455,6 @@ class LinkedInJobApplier:
         print("UK diversity form detected. Filling out...")
         
         try:
-
             hear_about_input = self.page.query_selector('input[id^="single-line-text-form-component-formElement-urn-li-jobs-applyformcommon-easyApplyFormElement-"][id$="-text"]')
             if hear_about_input:
                 hear_about_input.fill(user_data.get('hear_about_job', ''))
@@ -423,7 +464,10 @@ class LinkedInJobApplier:
                 ("What Right to Work in the UK documents do you hold?", "right_to_work"),
                 ("Are you currently living in the UK?", "living_in_uk"),
                 ("What is your notice period/availability?", "notice_period"),
-                ("What category would you consider your experience-level to be for the role you're applying for?", "experience_level")
+                ("What category would you consider your experience-level to be for the role you're applying for?", "experience_level"),
+                ("Do you have SC clearance?", "sc_clearance"),
+                ("Do you have secuity clearance?", "sc_clearance"),
+                ("Would you be willing to ", "willing")
             ]
 
             for label, key in dropdowns:
@@ -490,41 +534,6 @@ class LinkedInJobApplier:
             import traceback
             traceback.print_exc()
             return False
-    def select_dropdown(self, label, key, user_data):
-        try:
-            # Find the dropdown element
-            dropdown = self.page.query_selector(f'select:near(:text("{label}"))')
-            if not dropdown:
-                print(f"Dropdown for '{label}' not found")
-                return
-
-            # Get the value from user_data
-            value = user_data.get(key, '')
-            if not value:
-                print(f"No value provided for '{label}', skipping...")
-                return
-
-            # Get all options
-            options = dropdown.query_selector_all('option')
-            
-            # Find the closest match
-            best_match = None
-            best_ratio = 0
-            for option in options:
-                option_text = option.inner_text().strip().lower()
-                ratio = self.string_similarity(value.lower(), option_text)
-                if ratio > best_ratio:
-                    best_ratio = ratio
-                    best_match = option
-
-            if best_match:
-                best_match.click()
-                print(f"Selected '{best_match.inner_text().strip()}' for '{label}'")
-            else:
-                print(f"No suitable option found for '{label}'")
-
-        except Exception as e:
-            print(f"Error selecting dropdown for '{label}': {str(e)}")
 
     def string_similarity(self, a, b):
         # Simple string similarity function
@@ -536,7 +545,7 @@ class LinkedInJobApplier:
     def cover_letter_check(self, job_data_list):
         try:
             # Wait for the upload container to appear
-            container = self.page.wait_for_selector('.js-jobs-document-upload__container', timeout=5000)
+            container = self.page.wait_for_selector('.js-jobs-document-upload__container', timeout=1000)
 
             if container:
                 print("Container found. Checking for the cover letter upload button.")
@@ -562,7 +571,7 @@ class LinkedInJobApplier:
                         print("Cover letter uploaded successfully!")
 
                         # Wait for any potential loading or processing
-                        time.sleep(2)
+                        time.sleep(1)
 
                     else:
                         print(f"Cover letter not found at {cover_letter_path}")
@@ -578,99 +587,139 @@ class LinkedInJobApplier:
         print("Cover letter check completed.")
     def fill_unfilled_fields(self):
         try:
-            easy_apply_container = self.wait_for_and_scroll_to_element('div.jobs-easy-apply-content')
+            easy_apply_container = self.wait_for_and_scroll_to_element('div.jobs-easy-apply-content', timeout=20000)
             if not easy_apply_container:
                 print("Easy Apply container not found or not visible.")
                 return
 
-            # Find all input fields, including those that are checked
-            all_fields = easy_apply_container.query_selector_all(
-                'input:not([type="hidden"]):not([type="submit"]), '
-                'select, textarea'
-            )
+            all_fields = self.retry_query_selector_all(easy_apply_container, 
+                'input:not([type="hidden"]):not([type="submit"]), select, textarea')
 
-            # Keep track of radio button groups we've already processed
             processed_radio_groups = set()
 
             for field in all_fields:
-                field_type = field.get_attribute('type') or field.tag_name.lower()
-                field_id = field.get_attribute('id') or field.get_attribute('name')
-                
-                # Scroll the field into view and wait a short time
-                field.scroll_into_view_if_needed()
-                time.sleep(0.5)
+                try:
+                    dropdowns = [
+                    ("What Right to Work in the UK documents do you hold?", "right_to_work"),
+                    ("Are you currently living in the UK?", "living_in_uk"),
+                    ("What is your notice period/availability?", "notice_period"),
+                    ("What category would you consider your experience-level to be for the role you're applying for?", "experience_level"),
+                    ("Do you have SC clearance?", "sc_clearance"),
+                    ("Do you have secuity clearance?", "sc_clearance"),
+                    ("Would you be willing to ", "willing")
+                ]
 
-                if field_type in ['text', 'textarea']:
-                    if not field.input_value().strip():
-                        is_numeric = 'numeric' in (field_id or '').lower() or 'number' in (field_id or '').lower()
-                        field.fill('0' if is_numeric else 'N/A')
-                        print(f"Filled {'numeric' if is_numeric else 'text'} field: {field_id}")
-                elif field_type == 'checkbox':
-                    label_text = self.get_label_text(field).lower()
-                    if "visa" in label_text or "sponsorship" in label_text:
-                        # Uncheck for visa/sponsorship questions
-                        if field.is_checked():
-                            self.click_element_safely(field)
-                            print(f"Unchecked visa/sponsorship checkbox: {field_id}")
-                    elif not field.is_checked() and random.choice([True, False]):
-                        self.click_element_safely(field)
-                        print(f"Checked checkbox: {field_id}")
-                elif field_type == 'radio':
-                    name = field.get_attribute('name')
-                    if name not in processed_radio_groups:
-                        radio_group = easy_apply_container.query_selector_all(f'input[type="radio"][name="{name}"]')
-                        
-                        # Get the label for the entire radio group
-                        group_label = self.get_group_label(radio_group[0])
-                        print(f"Processing radio group: {group_label}")
+                    for label, key in dropdowns:
+                        try:
+                            self.select_dropdown(label, key, self.user_data)
+                        except Exception as e:
+                            print(f"Error selecting dropdown for '{label}': {str(e)}")
+                    field_type = field.get_attribute('type') or field.tag_name.lower()
+                    field_id = field.get_attribute('id') or field.get_attribute('name')
+                    
+                    self.retry_scroll_into_view(field)
+                    time.sleep(0.5)
 
-                        if "visa" in group_label.lower() or "sponsorship" in group_label.lower():
-                            # Find and select the "No" option
-                            no_option = next((radio for radio in radio_group if self.get_label_text(radio).strip().lower() == 'no'), None)
-                            if no_option:
-                                self.click_element_safely(no_option)
-                                print("Selected 'No' for visa/sponsorship question")
-                            else:
-                                print("Could not find 'No' option for visa/sponsorship question")
-                        if "legally authorized" in group_label.lower():
-                            # Find and select the "Yes" option
-                            yes_option = next((radio for radio in radio_group if self.get_label_text(radio).strip().lower() == 'yes'), None)
-                            if yes_option:
-                                self.click_element_safely(yes_option)
-                                print("Selected 'Yes' for legally authorized question")
-                            else:
-                                print("Could not find 'Yes' option for legally authorized question")
-                        if "commute" or "relocate" or "location" or "commuting" in group_label.lower():
-                            # Find and select the "Yes" option
-                            yes_option = next((radio for radio in radio_group if self.get_label_text(radio).strip().lower() == 'yes'), None)
-                            if yes_option:
-                                self.click_element_safely(yes_option)
-                                print("Selected 'Yes' for commuting/relocation question")
-                            else:
-                                print("Could not find 'Yes' option for commuting/relocation question")
-                        elif not any(radio.is_checked() for radio in radio_group):
-                            selected_radio = random.choice(radio_group)
-                            self.click_element_safely(selected_radio)
-                            print(f"Selected radio button: {selected_radio.get_attribute('id')} from group {name}")
-                        else:
-                            print(f"Radio group {name} already has a selection. Skipping.")
-                        
-                        processed_radio_groups.add(name)
-                elif field_type == 'select-one':
-                    # Only change if no option is selected
-                    if not field.evaluate('(el) => el.value'):
-                        options = field.query_selector_all('option')
-                        valid_options = [opt for opt in options if opt.get_attribute('value') and not self.is_default_option(opt)]
-                        if valid_options:
-                            random_option = random.choice(valid_options)
-                            field.select_option(value=random_option.get_attribute('value'))
-                            print(f"Selected option for select field: {field_id}")
-                    else:
-                        print(f"Select field {field_id} already has a selection. Skipping.")
+                    if field_type in ['text', 'textarea']:
+                        self.fill_text_field(field, field_id)
+                    elif field_type == 'checkbox':
+                        self.handle_checkbox(field, field_id)
+                    elif field_type == 'radio':
+                        self.handle_radio_group(field, processed_radio_groups, easy_apply_container)
+                    elif field_type == 'select-one':
+                        self.handle_select_field(field, field_id)
+
+                except Exception as e:
+                    print(f"Error processing field {field_id}: {str(e)}")
 
         except Exception as e:
             print("Error filling unknown fields:")
             print(e)
+
+    def retry_query_selector_all(self, element, selector, max_retries=3, delay=1):
+        for _ in range(max_retries):
+            try:
+                return element.query_selector_all(selector)
+            except Exception:
+                time.sleep(delay)
+        return []
+
+    def retry_scroll_into_view(self, element, max_retries=3, delay=1):
+        for _ in range(max_retries):
+            try:
+                element.scroll_into_view_if_needed()
+                return
+            except Exception:
+                time.sleep(delay)
+        print(f"Failed to scroll element into view after {max_retries} attempts")
+
+    def fill_text_field(self, field, field_id):
+        if not field.input_value().strip():
+            is_numeric = 'numeric' in (field_id or '').lower() or 'number' in (field_id or '').lower()
+            field.fill('0' if is_numeric else 'N/A')
+            print(f"Filled {'numeric' if is_numeric else 'text'} field: {field_id}")
+
+    def handle_checkbox(self, field, field_id):
+        label_text = self.get_label_text(field).lower()
+        if "visa" in label_text or "sponsorship" in label_text:
+            if field.is_checked():
+                self.click_element_safely(field)
+                print(f"Unchecked visa/sponsorship checkbox: {field_id}")
+        elif not field.is_checked() and random.choice([True, False]):
+            self.click_element_safely(field)
+            print(f"Checked checkbox: {field_id}")
+
+    def handle_radio_group(self, field, processed_radio_groups, container):
+        name = field.get_attribute('name')
+        if name not in processed_radio_groups:
+            radio_group = self.retry_query_selector_all(container, f'input[type="radio"][name="{name}"]')
+            group_label = self.get_group_label(radio_group[0])
+            print(f"Processing radio group: {group_label}")
+
+            if any(keyword in group_label.lower() for keyword in ["visa", "sponsorship"]):
+                self.select_radio_option(radio_group, "no", "visa/sponsorship")
+            elif "legally authorized" in group_label.lower():
+                self.select_radio_option(radio_group, "yes", "legally authorized")
+            elif any(keyword in group_label.lower() for keyword in ["commute", "relocate", "location", "commuting"]):
+                self.select_radio_option(radio_group, "yes", "commuting/relocation")
+            elif not any(radio.is_checked() for radio in radio_group):
+                selected_radio = random.choice(radio_group)
+                self.click_element_safely(selected_radio)
+                print(f"Selected radio button: {selected_radio.get_attribute('id')} from group {name}")
+            else:
+                print(f"Radio group {name} already has a selection. Skipping.")
+            
+            processed_radio_groups.add(name)
+
+    def handle_select_field(self, field, field_id):
+        if not field.evaluate('(el) => el.value'):
+            options = field.query_selector_all('option')
+            valid_options = [opt for opt in options if opt.get_attribute('value') and not self.is_default_option(opt)]
+            if valid_options:
+                random_option = random.choice(valid_options)
+                field.select_option(value=random_option.get_attribute('value'))
+                print(f"Selected option for select field: {field_id}")
+        else:
+            print(f"Select field {field_id} already has a selection. Skipping.")
+
+    def select_radio_option(self, radio_group, target_value, question_type):
+        target_option = next((radio for radio in radio_group if self.get_label_text(radio).strip().lower() == target_value), None)
+        if target_option:
+            self.click_element_safely(target_option)
+            print(f"Selected '{target_value.capitalize()}' for {question_type} question")
+        else:
+            print(f"Could not find '{target_value.capitalize()}' option for {question_type} question")
+
+    def click_element_safely(self, element, timeout=10000):
+        try:
+            element.click(timeout=timeout)
+        except PlaywrightTimeoutError:
+            print(f"Regular click failed: Timeout {timeout}ms exceeded.")
+            try:
+                self.page.evaluate("(element) => element.click()", element)
+                print("Clicked element using JavaScript")
+            except Exception as js_e:
+                print(f"JavaScript click also failed: {str(js_e)}")
 
     def get_label_text(self, field):
         # Try to find an associated label
@@ -703,30 +752,7 @@ class LinkedInJobApplier:
         ''')
         return group_label or ''
 
-    def click_element_safely(self, element):
-        try:
-            # Try regular click
-            element.click()
-        except Exception as e:
-            print(f"Regular click failed: {e}")
-            try:
-                # Try forcing click with JavaScript
-                self.page.evaluate("(element) => element.click()", element)
-            except Exception as e:
-                print(f"Forced click failed: {e}")
-                # If both methods fail, try clicking the label if it exists
-                label = element.query_selector("label")
-                if label:
-                    try:
-                        label.click()
-                    except Exception as e:
-                        print(f"Label click failed: {e}")
-                        # If all else fails, try to select the radio button programmatically
-                        if element.get_attribute('type') == 'radio':
-                            self.page.evaluate("(element) => element.checked = true", element)
-        
-        # Wait a short time after clicking to allow any animations or state changes
-        time.sleep(0.5)
+
 
     def wait_for_and_scroll_to_element(self, selector, timeout=1000):
         element = self.page.wait_for_selector(selector, timeout=timeout)
@@ -741,7 +767,7 @@ class LinkedInJobApplier:
     def fill_field(self, selector, value, field_name, select=False, timeout=1000, max_attempts=1):
         for attempt in range(max_attempts):
             try:
-                element = self.page.wait_for_selector(selector, state="visible", timeout=timeout)
+                element = self.page.wait_for_selector(selector, state="visible", timeout=1000)
                 if element:
                     if select:
                         element.select_option(value=value)
@@ -755,7 +781,7 @@ class LinkedInJobApplier:
                 print(f"Error filling {field_name}, attempt {attempt + 1}/{max_attempts}: {e}")
             
             if attempt < max_attempts - 1:
-                time.sleep(1)  # Short wait before next attempt
+                time.sleep(0.2)  # Short wait before next attempt
         
         print(f"Failed to fill {field_name} after {max_attempts} attempts")
     def press_discard_button(self):
@@ -764,7 +790,7 @@ class LinkedInJobApplier:
         
         try:
             # Wait for the button to be visible and clickable
-            discard_button = self.page.wait_for_selector(discard_button_selector, state="visible", timeout=5000)
+            discard_button = self.page.wait_for_selector(discard_button_selector, state="visible", timeout=2500)
             
             # Click the discard button
             discard_button.click()
@@ -859,7 +885,7 @@ class LinkedInJobApplier:
             if button:
                 button.click()
                 print(f"Clicked '{button_type}' button.")
-                time.sleep(1)  # Wait for potential form change
+                time.sleep(0.2)  # Wait for potential form change
 
                 if button_type in ["Review", "Next"]:
                     # Check progress bar to ensure it has moved
@@ -874,7 +900,7 @@ class LinkedInJobApplier:
                 if button_type == "Submit":
                     # Wait for the "Done" button to appear
                     done_button_selector = 'button.artdeco-button--primary:has-text("Done")'
-                    self.page.wait_for_selector(done_button_selector, timeout=5000)
+                    self.page.wait_for_selector(done_button_selector, timeout=2500)
                     done_button = self.page.query_selector(done_button_selector)
                     if done_button:
                         done_button.click()
@@ -902,7 +928,7 @@ def main():
             location = "Sheffield"
             distance = "4"
             applier.job_title = job_title  # Store job title as an instance variable
-            applier.apply_to_jobs(location=location, distance=distance, user_data_file='user_data.json', num_applications=10)
+            applier.apply_to_jobs(location=location, distance=distance, user_data_file='user_data.json', num_applications=50)
         else:
             print("Failed to log in. Cannot proceed with job applications.")
     finally:
