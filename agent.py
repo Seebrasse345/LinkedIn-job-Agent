@@ -327,13 +327,4 @@ class Agent:
             return
 
                 
-                
-                
-<<<<<<< HEAD
             
-    
-
-=======
-                
-    
->>>>>>> 4a3d154f6e1cde1eff42af5765b041a8d0bd99a2
