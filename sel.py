@@ -5,13 +5,19 @@ import random
 from playwright.sync_api import sync_playwright
 from pdfminer.high_level import extract_text
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
-import agent
+from agent import Agent
 import PyPDF2
+from dotenv import load_dotenv
+import os
+
+
+# Load environment variables from .env file (optional if using system variables)
+load_dotenv()
 
 import os
 # Credentials
-LINKEDIN_EMAIL = ""
-LINKEDIN_PASSWORD = ""
+LINKEDIN_EMAIL = os.getenv("LINKEDIN_EMAIL")
+LINKEDIN_PASSWORD = os.getenv("LINKEDIN_PASSWORD")
 
 STATE_FILE = "linkedin_state.json"  # File to save the browser state
 MAX_LOGIN_ATTEMPTS = 3  # Maximum number of login attempts
@@ -21,7 +27,7 @@ class LinkedInJobApplier:
         self.playwright = sync_playwright().start()
         self.browser = None
         self.context = None
-        self.agent = agent(api_key="", model="gpt-4o-mini")
+        self.agent = Agent(api_key=os.getenv("openai_api"), model="gpt-4o-mini")
 
         self.page = None
         self.logged_in = False
@@ -400,6 +406,26 @@ class LinkedInJobApplier:
         print(f"Final job card count: {len(job_cards)}")
         
         return job_cards
+    def fill_headline(self, headline):
+        try:
+            # Try to find the headline input field
+            headline_input = self.page.query_selector('input[id^="single-line-text-form-component-formElement-"][id$="-text"]')
+            
+            if headline_input:
+                # Check if the label for this input contains "Headline"
+                label = self.page.query_selector(f'label[for="{headline_input.get_attribute("id")}"]')
+                
+                if label and "headline" in label.inner_text().lower():
+                    # Fill in the headline
+                    headline_input.fill(headline)
+                    print(f"Filled headline: {headline}")
+                else:
+                    print("Found input field, but it doesn't seem to be for headline")
+            else:
+                print("Headline input field not found")
+        
+        except Exception as e:
+            print(f"Error filling headline: {str(e)}")
 
     def go_to_next_page(self):
         try:
@@ -482,9 +508,13 @@ class LinkedInJobApplier:
                                 user_data['phone_country_code'], 'phone country code', select=True)
                 self.fill_field('input[id^="single-line-text-form-component-formElement-"][id$="-phoneNumber-nationalNumber"]', 
                                 user_data['phone_number'], 'phone number')
+                self.fill_address(user_data['address'])
+                self.fill_headline("Cover letter")
+
                 self.fill_city(user_data['city'])
                 self.fill_driving_license(user_data.get('driving_license', 'Prefer not to say'))
                 self.fill_years_of_experience()
+                self.fill_summary(job_data_list)
                 self.fill_salary(user_data.get('salary', '25000'))
                 self.cover_letter_check(job_data_list)
                 try:
@@ -552,7 +582,31 @@ class LinkedInJobApplier:
             print(f"Error closing application modal")
 
         return True  # Application succeeded
+    def fill_summary(self,job_data_list):
+        try:
+            # Try to find the summary textarea
+            summary_textarea = self.page.query_selector('textarea[id^="multiline-text-form-component-formElement-"][id$="-text"]')
+            
+            if summary_textarea:
+                # Check if the label for this textarea contains "Summary"
+                label = self.page.query_selector(f'label[for="{summary_textarea.get_attribute("id")}"]')
+                
+                if label and "summary" in label.inner_text().lower():
+                    # Fill in the summary 
+                        if self.user_data["used_cover"] == False:
+                            self.create_cover_letter(job_data_list)
+                        text = self.extract_text_from_pdf("cover.pdf")
+                        
 
+                        summary_textarea.fill(text)
+                        print(f"Filled summary: {text}")
+                else:
+                    print("Found textarea, but it doesn't seem to be for summary")
+            else:
+                print("Summary textarea not found")
+        
+        except Exception as e:
+            print(f"Error filling summary: {str(e)}")
     def select_dropdown(self, label, key, user_data):
         try:
             # Find the dropdown element using the label text
@@ -903,7 +957,26 @@ class LinkedInJobApplier:
         return group_label or ''
 
 
-
+    def fill_address(self, address):
+        try:
+            # Try to find the address input field
+            address_input = self.page.query_selector('input[id^="single-line-text-form-component-formElement-"][id$="-text"]')
+            
+            if address_input:
+                # Check if the label for this input contains "Address"
+                label = self.page.query_selector(f'label[for="{address_input.get_attribute("id")}"]')
+                
+                if label and "address" in label.inner_text().lower():
+                    # Fill in the address
+                    address_input.fill(address)
+                    print(f"Filled address: {address}")
+                else:
+                    print("Found input field, but it doesn't seem to be for address")
+            else:
+                print("Address input field not found")
+        
+        except Exception as e:
+            print(f"Error filling address: {str(e)}")
     def wait_for_and_scroll_to_element(self, selector, timeout=1000):
         element = self.page.wait_for_selector(selector, timeout=timeout)
         if element:
@@ -989,8 +1062,12 @@ class LinkedInJobApplier:
             for input in experience_inputs:
                 label = self.page.evaluate('(el) => el.labels[0].textContent', input)
                 if label and label.lower().startswith("how many years"):
-                    input.fill('0')
-                    print(f"Filled '0' for: {label}")
+                    if "python" in label.lower():
+                        input.fill('2')
+                        print(f"Filled '2' for: {label}")
+                    else:
+                        input.fill('0')
+                        print(f"Filled '0' for: {label}")
         except Exception as e:
             print(f"Error handling years of experience: {e}")
 
@@ -1074,7 +1151,7 @@ def main():
     try:
         applier.ensure_login()
         if applier.logged_in:
-            job_title = "Data"
+            job_title = "graduate"
             location = "Sheffield"
             distance = "4"
             applier.job_title = job_title  # Store job title as an instance variable
