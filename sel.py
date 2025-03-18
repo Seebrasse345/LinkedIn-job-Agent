@@ -2,36 +2,56 @@ import os
 import time
 import json
 import random
+from pathlib import Path
 from playwright.sync_api import sync_playwright
 from pdfminer.high_level import extract_text
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from agent import Agent
 import PyPDF2
 from dotenv import load_dotenv
-import os
 
-
-# Load environment variables from .env file (optional if using system variables)
+# Load environment variables from .env file
 load_dotenv()
 
-import os
-# Credentials
+# Environment variables and file paths
 LINKEDIN_EMAIL = os.getenv("LINKEDIN_EMAIL")
 LINKEDIN_PASSWORD = os.getenv("LINKEDIN_PASSWORD")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
-STATE_FILE = "linkedin_state.json"  # File to save the browser state
-MAX_LOGIN_ATTEMPTS = 3  # Maximum number of login attempts
+# File paths with environment variable overrides
+BASE_DIR = Path(__file__).parent
+CV_PATH = Path(os.getenv("CV_PATH", BASE_DIR / "cv.pdf"))
+COVER_LETTER_PATH = Path(os.getenv("COVER_LETTER_PATH", BASE_DIR / "cover.pdf"))
+USER_DATA_PATH = Path(os.getenv("USER_DATA_PATH", BASE_DIR / "user_data.json"))
+STATE_FILE_PATH = Path(os.getenv("STATE_FILE_PATH", BASE_DIR / "linkedin_state.json"))
+
+# Validate required environment variables
+required_env_vars = {
+    "LINKEDIN_EMAIL": LINKEDIN_EMAIL,
+    "LINKEDIN_PASSWORD": LINKEDIN_PASSWORD,
+    "OPENAI_API_KEY": OPENAI_API_KEY
+}
+
+missing_vars = [var for var, value in required_env_vars.items() if not value]
+if missing_vars:
+    raise ValueError(f"Missing required environment variables: {', '.join(missing_vars)}")
 
 class LinkedInJobApplier:
     def __init__(self):
         self.playwright = sync_playwright().start()
         self.browser = None
         self.context = None
-        self.agent = Agent(api_key=os.getenv("openai_api"), model="gpt-4o-mini")
-
+        self.agent = Agent(api_key=OPENAI_API_KEY, model="gpt-4o-mini")
         self.page = None
         self.logged_in = False
-        self.user_data = json.load(open("user_data.json"))
+        
+        # Load user data
+        try:
+            with open(USER_DATA_PATH) as f:
+                self.user_data = json.load(f)
+        except FileNotFoundError:
+            raise FileNotFoundError(f"User data file not found at {USER_DATA_PATH}. Please create one using the template in README.md")
+        
         self.job_title = None
 
     def safe_navigate(self, url):
@@ -40,27 +60,19 @@ class LinkedInJobApplier:
             self.page.wait_for_load_state('domcontentloaded')
         except Exception as e:
             print(f"Error navigating to {url}: {str(e)}")
-    def extract_text_from_pdf(self,pdf_filename):
-        # Check if the file exists in the current directory
-        if not os.path.exists(pdf_filename):
-            print(f"Error: The file '{pdf_filename}' does not exist in the current directory.")
+    def extract_text_from_pdf(self, pdf_filename):
+        pdf_path = Path(pdf_filename)
+        if not pdf_path.exists():
+            print(f"Error: The file '{pdf_path}' does not exist.")
             return None
 
         try:
-            # Open the PDF file
-            with open(pdf_filename, 'rb') as pdf_file:
-                # Create a PDF reader object
+            with open(pdf_path, 'rb') as pdf_file:
                 pdf_reader = PyPDF2.PdfReader(pdf_file)
-                
-                # Initialize an empty string to store the extracted text
                 extracted_text = ""
-                
-                # Iterate through all pages and extract text
                 for page in pdf_reader.pages:
                     extracted_text += page.extract_text()
-                
-            return extracted_text
-
+                return extracted_text
         except Exception as e:
             print(f"An error occurred while processing the PDF: {str(e)}")
             return None
@@ -126,9 +138,9 @@ class LinkedInJobApplier:
         return self.check_login_status()
 
     def ensure_login(self):
-        if os.path.exists(STATE_FILE):
+        if STATE_FILE_PATH.exists():
             self.browser = self.playwright.chromium.launch(headless=False)
-            self.context = self.browser.new_context(storage_state=STATE_FILE)
+            self.context = self.browser.new_context(storage_state=STATE_FILE_PATH)
             self.page = self.context.new_page()
             if self.check_login_status():
                 self.logged_in = True
@@ -143,7 +155,7 @@ class LinkedInJobApplier:
             if self.check_login_status():
                 self.logged_in = True
                 print(f"Successfully logged in on attempt {attempt + 1}!")
-                self.context.storage_state(path=STATE_FILE)
+                self.context.storage_state(path=STATE_FILE_PATH)
                 return
             else:
                 print(f"Login attempt {attempt + 1} of {MAX_LOGIN_ATTEMPTS}")
@@ -748,13 +760,10 @@ class LinkedInJobApplier:
 
     def cover_letter_check(self, job_data_list):
         try:
-            # Wait for the upload container to appear
             container = self.page.wait_for_selector('.js-jobs-document-upload__container', timeout=1000)
 
             if container:
                 print("Container found. Checking for the cover letter upload button.")
-
-                # Look for the hidden file input
                 file_input = self.page.query_selector('input[id^="jobs-document-upload-file-input-upload-cover-letter"]')
                 
                 if file_input:
@@ -762,23 +771,13 @@ class LinkedInJobApplier:
 
                     if self.user_data["used_cover"] == False:
                         self.create_cover_letter(job_data_list)
-                        
 
-                    # Set the full path to your cover letter
-                    cover_letter_path = r"C:\Users\seebr\Desktop\python_stuff\web_stuff\renewed_sel\applicator\cover.pdf"
-
-                    # Ensure the file exists
-                    if os.path.exists(cover_letter_path):
-                        # Use the built-in method to set the file
-                        file_input.set_input_files(cover_letter_path)
-
+                    if COVER_LETTER_PATH.exists():
+                        file_input.set_input_files(str(COVER_LETTER_PATH))
                         print("Cover letter uploaded successfully!")
-
-                        # Wait for any potential loading or processing
                         time.sleep(1)
-
                     else:
-                        print(f"Cover letter not found at {cover_letter_path}")
+                        print(f"Cover letter not found at {COVER_LETTER_PATH}")
                 else:
                     print("File input not found!")
             else:
@@ -1147,15 +1146,22 @@ class LinkedInJobApplier:
         self.playwright.stop()
 
 def main():
+    # Check for required files
+    if not CV_PATH.exists():
+        raise FileNotFoundError(f"CV file not found at {CV_PATH}. Please add your CV.")
+    
+    if not USER_DATA_PATH.exists():
+        raise FileNotFoundError(f"User data file not found at {USER_DATA_PATH}. Please create one using the template in README.md")
+
     applier = LinkedInJobApplier()
     try:
         applier.ensure_login()
         if applier.logged_in:
-            job_title = "graduate"
-            location = "Sheffield"
-            distance = "4"
-            applier.job_title = job_title  # Store job title as an instance variable
-            applier.apply_to_jobs(location=location, distance=distance, user_data_file='user_data.json', num_applications=500)
+            job_title = "graduate"  # This could be made configurable
+            location = "Sheffield"  # This could be made configurable
+            distance = "4"         # This could be made configurable
+            applier.job_title = job_title
+            applier.apply_to_jobs(location=location, distance=distance, user_data_file=str(USER_DATA_PATH), num_applications=500)
         else:
             print("Failed to log in. Cannot proceed with job applications.")
     finally:
