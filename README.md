@@ -58,27 +58,27 @@ Create a `user_data.json` file with your profile information:
 ```json
 {
     "email": "your.email@example.com",
-    "phone_country_code": "+44",
-    "phone_number": "1234567890",
+    "phone_country_code": "+XX",
+    "phone_number": "XXXXXXXXXX",
     "address": "Your Full Address",
     "city": "Your City",
-    "driving_license": "Yes",
-    "salary": "25000",
+    "driving_license": "Yes/No",
+    "salary": "Your Expected Salary",
     "used_cover": false,
-    "right_to_work": "British Citizen",
-    "living_in_uk": "Yes",
-    "notice_period": "Immediately",
-    "experience_level": "Entry Level",
-    "sc_clearance": "No",
-    "willing": "Yes",
-    "gender": "Prefer not to say",
-    "ethnicity": "Prefer not to say",
-    "sexual_orientation": "Prefer not to say",
+    "right_to_work": "Your Right to Work Status",
+    "living_in_uk": "Yes/No",
+    "notice_period": "Your Notice Period",
+    "experience_level": "Your Experience Level",
+    "sc_clearance": "Yes/No",
+    "willing": "Yes/No",
+    "gender": "Your Gender",
+    "ethnicity": "Your Ethnicity",
+    "sexual_orientation": "Your Sexual Orientation",
     "disability": {
-        "status": "No",
-        "description": ""
+        "status": "Yes/No",
+        "description": "Description of Disability"
     },
-    "hear_about_job": "LinkedIn"
+    "hear_about_job": "How You Heard About the Job"
 }
 ```
 
